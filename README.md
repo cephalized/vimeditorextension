@@ -1,1 +1,1 @@
-Vim Editor Extension
+Unity Vim Editor Extension
