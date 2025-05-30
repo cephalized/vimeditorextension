@@ -56,18 +56,17 @@ namespace Vim.Editor
 
 		public bool OpenProject(string filePath, int line, int column)
 		{
-  			var extensions = EditorPrefs.GetString(Keys.FILENAME_EXTENSIONS, Defaults.FILENAME_EXTENSIONS).Split(',');
-
-      			if (extensions.Count > 0)
+			var extensions = EditorPrefs.GetString(Keys.FILENAME_EXTENSIONS, Defaults.FILENAME_EXTENSIONS)
+				.Split(',')
+				.Select(ext => ext.Trim())
+				.ToArray();
+			
+   			if (extensions.Length > 0)
 			{
-	   			var supportedExtention = false; 
-				foreach (var extension in extensions)
-				{
-					if (filePath.EndsWith(extension)) supportedExtension = true;
-				}
-    				if (!supportedExtension) return false;
-  			}
-
+				var supportedExtension = extensions.Any(ext => filePath.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+				if (!supportedExtension) return false;
+			}
+   S
 			var vimPath = EditorPrefs.GetString(Keys.VIM_PATH, Defaults.VIM_PATH);
 
 			if (string.IsNullOrEmpty(vimPath) || !File.Exists(vimPath))
