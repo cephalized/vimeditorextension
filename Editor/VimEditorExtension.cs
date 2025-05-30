@@ -63,11 +63,10 @@ namespace Vim.Editor
 	   			var supportedExtention = false; 
 				foreach (var extension in extensions)
 				{
-					if (filePath.EndsWith(extension))
+					if (filePath.EndsWith(extension)) supportedExtension = true;
 				}
     				if (!supportedExtension) return false;
-  			}	
-
+  			}
 
 			var vimPath = EditorPrefs.GetString(Keys.VIM_PATH, Defaults.VIM_PATH);
 
