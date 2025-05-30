@@ -66,7 +66,7 @@ namespace Vim.Editor
 				var supportedExtension = extensions.Any(ext => filePath.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
 				if (!supportedExtension) return false;
 			}
-   S
+   
 			var vimPath = EditorPrefs.GetString(Keys.VIM_PATH, Defaults.VIM_PATH);
 
 			if (string.IsNullOrEmpty(vimPath) || !File.Exists(vimPath))
