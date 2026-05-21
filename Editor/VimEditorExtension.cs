@@ -55,6 +55,13 @@ namespace Vim.Editor
 			}
 		}
 
+		private string GetProjectServerName()
+		{
+			var projectDir = Directory.GetParent(Application.dataPath)?.Name ?? "Unity";
+			var safe = System.Text.RegularExpressions.Regex.Replace(projectDir, @"[^a-zA-Z0-9]", "_");
+			return "UNITY_" + safe.ToUpperInvariant();
+		}
+
 		public bool OpenProject(string filePath, int line, int column)
 		{
 			var extensions = EditorPrefs.GetString(Keys.FILENAME_EXTENSIONS, Defaults.FILENAME_EXTENSIONS)
@@ -88,11 +95,12 @@ namespace Vim.Editor
 
 			try
 			{
+				var serverName = GetProjectServerName();
 				var process = new Process();
 				process.StartInfo.FileName = vimPath;
 				process.StartInfo.UseShellExecute = false;
 				process.StartInfo.RedirectStandardOutput = false;
-				process.StartInfo.Arguments = $"--servername Unity --remote-silent +\"call cursor({line},{column})\" {path} \"{filePath}\"";
+				process.StartInfo.Arguments = $"--servername {serverName} --remote-silent +\"call cursor({line},{column})\" {path} \"{filePath}\"";
 				process.Start();
 				return true;
 			}
