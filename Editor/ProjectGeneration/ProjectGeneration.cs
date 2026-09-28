@@ -348,6 +348,17 @@ namespace Vim.Editor
             }
 
             WriteVSCodeSettingsFiles();
+            DeleteStaleProjectFiles(allProjectAssemblies);
+        }
+
+        void DeleteStaleProjectFiles(IEnumerable<Assembly> assemblies)
+        {
+            var current = new HashSet<string>(assemblies.Select(ProjectFile));
+            foreach (var file in Directory.GetFiles(ProjectDirectory, "*.csproj"))
+            {
+                if (!current.Contains(file))
+                    File.Delete(file);
+            }
         }
 
         List<ResponseFileData> ParseResponseFileData(Assembly assembly)
