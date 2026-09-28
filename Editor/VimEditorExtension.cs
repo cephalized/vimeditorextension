@@ -21,40 +21,40 @@ namespace Vim.Editor
 
 		public void Initialize(string editorPath) { }
 
-        public void OnGUI()
-        {
-        	VimPathTextField();
-            CodeAssetExtensionTextField();
-            ProjectGenerationToggles();
-      	}
+		public void OnGUI()
+		{
+			VimPathTextField();
+			CodeAssetExtensionTextField();
+			ProjectGenerationToggles();
+		}
 
-        private void ProjectGenerationToggles()
-        {
-        	EditorGUILayout.LabelField("Generate .csproj files for:");
+		private void ProjectGenerationToggles()
+		{
+			EditorGUILayout.LabelField("Generate .csproj files for:");
 			EditorGUI.indentLevel++;
-		 	ProjectGenerationToggle(ProjectGenerationFlag.Embedded, "Embedded packages");
-		  	ProjectGenerationToggle(ProjectGenerationFlag.Local, "Local packages");
-		  	ProjectGenerationToggle(ProjectGenerationFlag.Registry, "Registry packages");
-		  	ProjectGenerationToggle(ProjectGenerationFlag.Git, "Git packages");
-		  	ProjectGenerationToggle(ProjectGenerationFlag.BuiltIn, "Built-in packages");
-		  	ProjectGenerationToggle(ProjectGenerationFlag.LocalTarBall, "Local tarball");
-		  	ProjectGenerationToggle(ProjectGenerationFlag.Unknown, "Packages from unknown sources");
-		  	EditorGUI.indentLevel--;
+			ProjectGenerationToggle(ProjectGenerationFlag.Embedded, "Embedded packages");
+			ProjectGenerationToggle(ProjectGenerationFlag.Local, "Local packages");
+			ProjectGenerationToggle(ProjectGenerationFlag.Registry, "Registry packages");
+			ProjectGenerationToggle(ProjectGenerationFlag.Git, "Git packages");
+			ProjectGenerationToggle(ProjectGenerationFlag.BuiltIn, "Built-in packages");
+			ProjectGenerationToggle(ProjectGenerationFlag.LocalTarBall, "Local tarball");
+			ProjectGenerationToggle(ProjectGenerationFlag.Unknown, "Packages from unknown sources");
+			EditorGUI.indentLevel--;
 
-            if (GUILayout.Button("Regenerate project files"))
-            {
-            	RegenerateVisualStudioSolution();
-          	}
-         }
+			if (GUILayout.Button("Regenerate project files"))
+			{
+				RegenerateVisualStudioSolution();
+			}
+		}
 
-         private void ProjectGenerationToggle(ProjectGenerationFlag flag, string label)
-         {
-				  var provider = projectGenerator.AssemblyNameProvider;
-				  var enabled = provider.ProjectGenerationFlag.HasFlag(flag);
-				  if (EditorGUILayout.Toggle(label, enabled) != enabled)
-				  {
-						  provider.ToggleProjectGeneration(flag);
-				  }
+		private void ProjectGenerationToggle(ProjectGenerationFlag flag, string label)
+		{
+			var provider = projectGenerator.AssemblyNameProvider;
+			var enabled = provider.ProjectGenerationFlag.HasFlag(flag);
+			if (EditorGUILayout.Toggle(label, enabled) != enabled)
+			{
+				provider.ToggleProjectGeneration(flag);
+			}
 		}
 
 		private void VimPathTextField()
@@ -153,11 +153,11 @@ namespace Vim.Editor
 			RegenerateVisualStudioSolution();
 		}
 
-	    public void SyncIfNeeded(string[] addedFiles, string[] deletedFiles, string[] movedFiles, string[] movedFromFiles, string[] importe
-	    {
-		   (projectGenerator.AssemblyNameProvider as IPackageInfoCache)?.ResetPackageInfoCache();
-		   projectGenerator.SyncIfNeeded(addedFiles.Union(deletedFiles).Union(movedFiles).Union(movedFromFiles).ToList(), importedFile
-	    }
+		public void SyncIfNeeded(string[] addedFiles, string[] deletedFiles, string[] movedFiles, string[] movedFromFiles, string[] importedFiles)
+		{
+			(projectGenerator.AssemblyNameProvider as IPackageInfoCache)?.ResetPackageInfoCache();
+			projectGenerator.SyncIfNeeded(addedFiles.Union(deletedFiles).Union(movedFiles).Union(movedFromFiles).ToList(), importedFiles);
+		}
 
 		public bool TryGetInstallationForPath(string editorPath, out CodeEditor.Installation installation)
 		{
