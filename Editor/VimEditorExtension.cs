@@ -21,10 +21,40 @@ namespace Vim.Editor
 
 		public void Initialize(string editorPath) { }
 
-		public void OnGUI()
-		{
-			VimPathTextField();
-			CodeAssetExtensionTextField();
+        public void OnGUI()
+        {
+        	VimPathTextField();
+            CodeAssetExtensionTextField();
+            ProjectGenerationToggles();
+      	}
+
+        private void ProjectGenerationToggles()
+        {
+        	EditorGUILayout.LabelField("Generate .csproj files for:");
+			EditorGUI.indentLevel++;
+		 	ProjectGenerationToggle(ProjectGenerationFlag.Embedded, "Embedded packages");
+		  	ProjectGenerationToggle(ProjectGenerationFlag.Local, "Local packages");
+		  	ProjectGenerationToggle(ProjectGenerationFlag.Registry, "Registry packages");
+		  	ProjectGenerationToggle(ProjectGenerationFlag.Git, "Git packages");
+		  	ProjectGenerationToggle(ProjectGenerationFlag.BuiltIn, "Built-in packages");
+		  	ProjectGenerationToggle(ProjectGenerationFlag.LocalTarBall, "Local tarball");
+		  	ProjectGenerationToggle(ProjectGenerationFlag.Unknown, "Packages from unknown sources");
+		  	EditorGUI.indentLevel--;
+
+            if (GUILayout.Button("Regenerate project files"))
+            {
+            	RegenerateVisualStudioSolution();
+          	}
+         }
+
+         private void ProjectGenerationToggle(ProjectGenerationFlag flag, string label)
+         {
+				  var provider = projectGenerator.AssemblyNameProvider;
+				  var enabled = provider.ProjectGenerationFlag.HasFlag(flag);
+				  if (EditorGUILayout.Toggle(label, enabled) != enabled)
+				  {
+						  provider.ToggleProjectGeneration(flag);
+				  }
 		}
 
 		private void VimPathTextField()
@@ -123,32 +153,11 @@ namespace Vim.Editor
 			RegenerateVisualStudioSolution();
 		}
 
-		public void SyncIfNeeded(string[] addedFiles, string[] deletedFiles, string[] movedFiles, string[] movedFromFiles, string[] importedFiles)
-		{
-			var extensions = EditorPrefs.GetString(Keys.FILENAME_EXTENSIONS, Defaults.FILENAME_EXTENSIONS).Split(',');
-			if (extensions == null || extensions.Length == 0) return;
-
-			var syncNeeded = false;
-
-			foreach (var extension in extensions)
-			{
-				foreach (var addedFile in addedFiles)
-				{
-					if (addedFile.EndsWith(extension)) syncNeeded = true;
-				}
-
-				foreach (var movedFile in movedFiles)
-				{
-					if (movedFile.EndsWith(extension)) syncNeeded = true;
-				}
-			}
-
-			if (syncNeeded)
-			{
-				RegenerateVisualStudioSolution();
-				UnityEngine.Debug.Log($"[VimExternalEditor] Regenerated Visual Studio solution for {addedFiles.Length} new files, {movedFiles.Length} moved files.");
-			}
-		}
+	    public void SyncIfNeeded(string[] addedFiles, string[] deletedFiles, string[] movedFiles, string[] movedFromFiles, string[] importe
+	    {
+		   (projectGenerator.AssemblyNameProvider as IPackageInfoCache)?.ResetPackageInfoCache();
+		   projectGenerator.SyncIfNeeded(addedFiles.Union(deletedFiles).Union(movedFiles).Union(movedFromFiles).ToList(), importedFile
+	    }
 
 		public bool TryGetInstallationForPath(string editorPath, out CodeEditor.Installation installation)
 		{
