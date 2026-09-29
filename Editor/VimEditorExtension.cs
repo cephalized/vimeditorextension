@@ -245,7 +245,8 @@ namespace Vim.Editor
 				var process = new Process();
 				process.StartInfo.FileName = neovidePath;
 				process.StartInfo.UseShellExecute = false;
-				process.StartInfo.Arguments = $"--chdir \"{projectDir}\" -- --listen \"{socket}\" \"+set path+={Application.dataPath}/**\" \"+{cursor}\" \"{filePath}\"";
+				// Unity's PATH has no Homebrew, so Neovide can't find nvim by itself
+				process.StartInfo.Arguments = $"--neovim-bin \"{nvimPath}\" --chdir \"{projectDir}\" -- --listen \"{socket}\" \"+set path+={Application.dataPath}/**\" \"+{cursor}\" \"{filePath}\"";
 				process.Start();
 				return true;
 			}
