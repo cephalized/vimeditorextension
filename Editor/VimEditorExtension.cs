@@ -21,11 +21,54 @@ namespace Vim.Editor
 
 		public void Initialize(string editorPath) { }
 
+		// Remote calls to a Neovim stuck at a prompt never return, so don't let them hang Unity
+		const int NEOVIM_TIMEOUT_MS = 1000;
+
+		private static EditorMode CurrentMode => (EditorMode)EditorPrefs.GetInt(Keys.EDITOR_MODE, (int)EditorMode.Vim);
+
 		public void OnGUI()
 		{
-			VimPathTextField();
+			EditorModePopup();
+			if (CurrentMode == EditorMode.Neovim)
+			{
+				NeovimPathTextFields();
+			}
+			else
+			{
+				VimPathTextField();
+			}
 			CodeAssetExtensionTextField();
 			ProjectGenerationToggles();
+		}
+
+		private void EditorModePopup()
+		{
+			var currentMode = CurrentMode;
+			var newMode = (EditorMode)EditorGUILayout.EnumPopup(UILabels.EDITOR_MODE, currentMode);
+			if (newMode != currentMode)
+			{
+				EditorPrefs.SetInt(Keys.EDITOR_MODE, (int)newMode);
+			}
+		}
+
+		private void NeovimPathTextFields()
+		{
+			PathTextField(UILabels.NVIM_PATH, Keys.NVIM_PATH, Defaults.NVIM_PATH);
+			PathTextField(UILabels.NEOVIDE_PATH, Keys.NEOVIDE_PATH, Defaults.NEOVIDE_PATH);
+		}
+
+		private void PathTextField(string label, string key, string defaultPath)
+		{
+			EditorGUILayout.BeginHorizontal();
+			GUILayout.Label(label, GUILayout.Width(150));
+			EditorGUILayout.EndHorizontal();
+
+			var currentPath = EditorPrefs.GetString(key, defaultPath);
+			var newPath = EditorGUILayout.TextField(currentPath);
+			if (newPath != currentPath)
+			{
+				EditorPrefs.SetString(key, newPath);
+			}
 		}
 
 		private void ProjectGenerationToggles()
@@ -104,7 +147,12 @@ namespace Vim.Editor
 				var supportedExtension = extensions.Any(ext => filePath.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
 				if (!supportedExtension) return false;
 			}
-   
+
+			if (CurrentMode == EditorMode.Neovim)
+			{
+				return OpenInNeovim(filePath, Math.Max(line, 0), Math.Max(column, 0));
+			}
+
 			var vimPath = EditorPrefs.GetString(Keys.VIM_PATH, Defaults.VIM_PATH);
 
 			if (string.IsNullOrEmpty(vimPath) || !File.Exists(vimPath))
@@ -138,6 +186,95 @@ namespace Vim.Editor
 			{
 				UnityEngine.Debug.LogError($"Failed to open file in Vim: {ex.Message}");
 				return false;
+			}
+		}
+
+		private string GetNeovimSocket()
+		{
+			// Kept short: macOS limits socket paths to 104 characters
+			return $"/tmp/nvim-{GetProjectServerName().ToLowerInvariant()}.sock";
+		}
+
+		private bool OpenInNeovim(string filePath, int line, int column)
+		{
+			var nvimPath = EditorPrefs.GetString(Keys.NVIM_PATH, Defaults.NVIM_PATH);
+			var neovidePath = EditorPrefs.GetString(Keys.NEOVIDE_PATH, Defaults.NEOVIDE_PATH);
+
+			if (string.IsNullOrEmpty(nvimPath) || !File.Exists(nvimPath))
+			{
+				UnityEngine.Debug.LogError($"Neovim executable not found at '{nvimPath}'. Please set the correct path in Unity Preferences.");
+				return false;
+			}
+
+			if (!File.Exists(filePath))
+			{
+				UnityEngine.Debug.LogError($"File '{filePath}' does not exist.");
+				return false;
+			}
+
+			var socket = GetNeovimSocket();
+			var cursor = $"call cursor({line},{column})";
+
+			try
+			{
+				var reply = RunNeovimCommand(nvimPath, $"--server \"{socket}\" --remote-expr 1");
+				if (reply == null)
+				{
+					UnityEngine.Debug.LogWarning("Neovim didn't respond. It may be waiting at a prompt.");
+					return false;
+				}
+
+				if (reply.Trim() == "1")
+				{
+					RunNeovimCommand(nvimPath, $"--server \"{socket}\" --remote \"{filePath}\"");
+					RunNeovimCommand(nvimPath, $"--server \"{socket}\" --remote-send \"<C-\\><C-N>:{cursor}<CR>\"");
+					Process.Start("open", "-a Neovide");
+					return true;
+				}
+
+				if (string.IsNullOrEmpty(neovidePath) || !File.Exists(neovidePath))
+				{
+					UnityEngine.Debug.LogError($"Neovide executable not found at '{neovidePath}'. Please set the correct path in Unity Preferences.");
+					return false;
+				}
+
+				// Left behind if Neovim crashed, and would stop the new instance listening
+				File.Delete(socket);
+
+				var projectDir = Directory.GetParent(Application.dataPath).FullName;
+				var process = new Process();
+				process.StartInfo.FileName = neovidePath;
+				process.StartInfo.UseShellExecute = false;
+				process.StartInfo.Arguments = $"--chdir \"{projectDir}\" -- --listen \"{socket}\" \"+set path+={Application.dataPath}/**\" \"+{cursor}\" \"{filePath}\"";
+				process.Start();
+				return true;
+			}
+			catch (System.Exception ex)
+			{
+				UnityEngine.Debug.LogError($"Failed to open file in Neovim: {ex.Message}");
+				return false;
+			}
+		}
+
+		private static string RunNeovimCommand(string nvimPath, string arguments)
+		{
+			using (var process = new Process())
+			{
+				process.StartInfo.FileName = nvimPath;
+				process.StartInfo.Arguments = arguments;
+				process.StartInfo.UseShellExecute = false;
+				process.StartInfo.RedirectStandardInput = true;
+				process.StartInfo.RedirectStandardOutput = true;
+				process.StartInfo.RedirectStandardError = true;
+				process.Start();
+
+				if (!process.WaitForExit(NEOVIM_TIMEOUT_MS))
+				{
+					process.Kill();
+					return null;
+				}
+
+				return process.StandardOutput.ReadToEnd();
 			}
 		}
 
